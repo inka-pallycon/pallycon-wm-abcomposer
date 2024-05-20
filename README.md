@@ -1,4 +1,4 @@
-# ABComposer Sample for PallyCon DRM Packager
+# ABComposer Sample for PallyCon DRM CLI Packager
 
 This app is a sample program that composes DASH / HLS / CMAF streams to enable Pallycon Forensic Watermark.
 
@@ -7,7 +7,7 @@ This app is a sample program that composes DASH / HLS / CMAF streams to enable P
 This app is implemented to support the following cases:
 - Input media
   - preprocessed by the PallyCon Forensic Watermark [Preprocessor SDK](https://pallycon.com/docs/en/forensic-watermarking/preprocessing/preprocessor-library/) or [FFmpeg Preprocessor Filter](https://pallycon.com/docs/en/forensic-watermarking/preprocessing/ffmpeg-filter/)
-  - packaged by the PallyCon DRM Packager
+  - packaged by the PallyCon DRM CLI Packager
 - CDN Embedder
   - [Akamai Adaptive Media Delivery Watermarking](https://techdocs.akamai.com/adaptive-media-delivery/docs/add-wmk)
     - Notice: It does not support CMAF.
