@@ -198,7 +198,7 @@ class ABComposer():
     def __get_filelist(self, dir_src: str) -> list:
         dir_len = len(dir_src)
         filelist = []
-        natsort = lambda s: [int(t) if t.isdigit() else t.lower() for t in re.split('(\d+)', s)]
+        natsort = lambda s: [int(t) if t.isdigit() else t.lower() for t in re.split('(\\d+)', s)]
         for (p, _, f) in os.walk(dir_src):
             if len(f) > 0:
                 f.sort(key=natsort)
