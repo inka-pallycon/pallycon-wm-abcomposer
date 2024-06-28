@@ -11,7 +11,7 @@ import re
 import shutil
 import sys
 
-VERSION = '1.1'
+VERSION = '1.2'
 ENABLE_PRINT_COMPOSING_ITEM = True
 
 class ABComposer():
@@ -38,12 +38,13 @@ class ABComposer():
         self.__remove_src = False
 
 
-    def __check(self, dir_0: str, dir_1: str, dir_dst: str) -> bool:
+    def __check(self, dir_0: str, dir_1: str, dir_dst: str, overwrite: bool) -> bool:
         ## check target directory input by user
         self.__dst_dir = self.__get_full_dir(dir_dst)
         if os.path.exists(self.__dst_dir):
-            print(f'target dir, {self.__dst_dir}, is already exist.')
-            return False
+            if not overwrite:
+                print(f'target dir, {self.__dst_dir}, is already exist.')
+                return False
 
         ### for print only
         self.__dst_parent_len = self.__dst_dir.rfind(os.path.sep) + 1
@@ -110,12 +111,11 @@ class ABComposer():
         return True
 
 
-    def __get_full_dir(self, dir_name: str):
+    def __get_full_dir(self, dir_name: str) -> str:
         if dir_name[0] == '~':
-            dir_name = os.path.expanduser(dir_name)
+            return os.path.expanduser(dir_name)
         else:
-            dir_name = os.path.abspath(dir_name)
-        return dir_name
+            return os.path.abspath(dir_name)
 
 
     def __check_stream_and_get_root_manifests(self, stream_type: str) -> 'tuple[bool, bool]':
@@ -261,7 +261,7 @@ class ABComposer():
                                 if f == 'stream.m3u8' or f == 'iframe.m3u8':
                                     manifest_src = os.path.sep.join([src0_dir, seg_dir, f])
                                     manifest_dst = os.path.sep.join([dst_root, seg_dir, f])
-                                    self.__modify_cmaf_m3u8(manifest_src, manifest_dst, True)
+                                    self.__modify_hls_cmaf_m3u8(manifest_src, manifest_dst, True)
                                     self.__print_composing_item(manifest_src[self.__src0_parent_len:], manifest_dst[self.__dst_parent_len:], '(modified)')
                                     continue
 
@@ -276,11 +276,11 @@ class ABComposer():
                                 self.__rename_file(src0, dst0)
                                 self.__rename_file(src1, dst1)
                             else:
-                                ## rewrite manifest, 'stream.m3u8'
-                                if f == 'stream.m3u8':
+                                ## rewrite manifest, 'stream.m3u8' and 'subtitle.m3u8'
+                                if f == 'stream.m3u8' or f == 'subtitle.m3u8':
                                     manifest_src = os.path.sep.join([src0_dir, seg_dir, f])
                                     manifest_dst = os.path.sep.join([dst_root, seg_dir, f])
-                                    self.__modify_cmaf_m3u8(manifest_src, manifest_dst, False)
+                                    self.__modify_hls_cmaf_m3u8(manifest_src, manifest_dst, False)
                                     self.__print_composing_item(manifest_src[self.__src0_parent_len:], manifest_dst[self.__dst_parent_len:], '(modified)')
                                     continue
 
@@ -310,55 +310,65 @@ class ABComposer():
 
                     ## tracks such as video, audio, and subtitle
                     for f in files:
-                        _, e = os.path.splitext(f)
-                        if e == '.m3u8':
-                            src = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
-                            dst = os.path.sep.join([dst_root, seg_dir, f])
-                            self.__print_composing_item(src[self.__src0_parent_len:], dst[self.__dst_parent_len:])
-                            self.__rename_file(src, dst)
-                        else:
-                            if seg_dir[:5] == 'video':
-                                ## the order of files must be sorted in ascending order.
-                                src0 = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
-                                dst0 = os.path.sep.join([dst_root, seg_dir, f])
-                                src1 = os.path.sep.join([self.__hls_1_dir, seg_dir, f])
-                                dst1 = os.path.sep.join([dst_root, seg_dir, f'b.{f}'])
-                                self.__print_composing_item(src0[self.__src0_parent_len:], dst0[self.__dst_parent_len:])
-                                self.__print_composing_item(src1[self.__src1_parent_len:], dst1[self.__dst_parent_len:])
-                                self.__rename_file(src0, dst0)
-                                self.__rename_file(src1, dst1)
-                            else:
+                        n, e = os.path.splitext(f)
+                        if seg_dir[:5] == 'video':
+                            if e == '.m3u8':
                                 src = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
                                 dst = os.path.sep.join([dst_root, seg_dir, f])
                                 self.__print_composing_item(src[self.__src0_parent_len:], dst[self.__dst_parent_len:])
                                 self.__rename_file(src, dst)
+                                continue
+
+                            ## the order of files must be sorted in ascending order.
+                            src0 = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
+                            dst0 = os.path.sep.join([dst_root, seg_dir, f])
+                            src1 = os.path.sep.join([self.__hls_1_dir, seg_dir, f])
+                            dst1 = os.path.sep.join([dst_root, seg_dir, f'b.{f}'])
+                            self.__print_composing_item(src0[self.__src0_parent_len:], dst0[self.__dst_parent_len:])
+                            self.__print_composing_item(src1[self.__src1_parent_len:], dst1[self.__dst_parent_len:])
+                            self.__rename_file(src0, dst0)
+                            self.__rename_file(src1, dst1)
+                        else:
+                            ## rewrite manifest, 'stream.m3u8' and 'subtitle.m3u8'
+                            if e == '.m3u8':
+                                manifest_src = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
+                                manifest_dst = os.path.sep.join([dst_root, seg_dir, f])
+                                self.__modify_hls_cmaf_m3u8(manifest_src, manifest_dst, False)
+                                self.__print_composing_item(manifest_src[self.__src0_parent_len:], manifest_dst[self.__dst_parent_len:], '(modified)')
+                                continue
+
+                            if n == 'init':
+                                n = ''
+                            src = os.path.sep.join([self.__hls_0_dir, seg_dir, f])
+                            dst = os.path.sep.join([dst_root, seg_dir, f'{n}_init{e}'])
+                            self.__print_composing_item(src[self.__src0_parent_len:], dst[self.__dst_parent_len:])
+                            self.__rename_file(src, dst)
 
 
     def __modify_dash_cmaf_mpd(self, manifest_src: str, manifest_dst: str) -> None:
         with open(manifest_src, 'rt', encoding='UTF8') as f_in:
             with open(manifest_dst, 'wt', encoding='UTF8') as f_out:
                 for line in f_in:
-                    pos_init = line.find('initialization=')
-                    if pos_init > 0:
-                        track_type = line[pos_init+16:pos_init+21]
-
+                    if line.find('media="video/') > 0:
                         ## all init files must be 'xxx_init.xxx'
                         line = line.replace('/init.', '/_init.')
 
-                        if track_type == 'video':
-                            ## video track must be embedded.
-                            ## - It must be '_$Number$' instead of '-$Number$'
-                            ## - And it must start from 0
-                            line = line.replace('-$Number$.', '_$Number$.').replace('startNumber="1"', 'startNumber="0"')
-                        else:
-                            ## the other track may not be embedded.
-                            ## to avoid embedding, it applies a little trick of changing all file names as 'init'.
-                            line = line.replace('-$Number$.', '-$Number$_init.')
+                        ## video track must be embedded.
+                        ## - It must be '_$Number$' instead of '-$Number$'
+                        ## - And it must start from 0
+                        line = line.replace('-$Number$.', '_$Number$.').replace('startNumber="1"', 'startNumber="0"')
+                    elif line.find('media="audio/') > 0 or line.find('media="subtitle/') > 0:
+                        ## all init files must be 'xxx_init.xxx'
+                        line = line.replace('/init.', '/_init.')
+
+                        ## the other track may not be embedded.
+                        ## to avoid embedding, it applies a little trick of changing all file names as 'init'.
+                        line = line.replace('-$Number$.', '-$Number$_init.')
 
                     f_out.write(line)
 
 
-    def __modify_cmaf_m3u8(self, manifest_src: str, manifest_dst: str, is_video: bool) -> None:
+    def __modify_hls_cmaf_m3u8(self, manifest_src: str, manifest_dst: str, is_video: bool) -> None:
         init_modified = False
         with open(manifest_src, 'rt', encoding='UTF8') as f_in:
             with open(manifest_dst, 'wt', encoding='UTF8') as f_out:
@@ -405,8 +415,8 @@ class ABComposer():
             shutil.rmtree(self.__src1_dir, ignore_errors=True)
 
 
-    def compose(self, dir_0: str, dir_1: str, dir_dst: str, remove_src: bool = False) -> bool:
-        if not self.__check(dir_0, dir_1, dir_dst):
+    def compose(self, dir_0: str, dir_1: str, dir_dst: str, remove_src: bool, overwrite: bool) -> bool:
+        if not self.__check(dir_0, dir_1, dir_dst, overwrite):
             return False
 
         self.__remove_src = remove_src
@@ -419,7 +429,7 @@ class ABComposer():
 
 def usage():
     print(f'ABComposer v{VERSION}, Copyright 2024 INKA Entworks')
-    print(f'  usage: {sys.argv[0]} <stream dir 0> <stream dir 1> <target dir> [--remove_src]')
+    print(f'  usage: {sys.argv[0]} <stream dir 0> <stream dir 1> <target dir> [--remove_src] [--overwrite]')
     sys.exit(-1)
 
 
@@ -431,11 +441,16 @@ def main():
         remove_src = True
         args.remove('--remove_src')
 
+    overwrite = False
+    if '--overwrite' in args:
+        overwrite = True
+        args.remove('--overwrite')
+
     if len(args) != 3:
         usage()
 
     composer = ABComposer()
-    if not composer.compose(args[0], args[1], args[2], remove_src):
+    if not composer.compose(args[0], args[1], args[2], remove_src, overwrite):
         return 1
 
     return 0

@@ -23,10 +23,12 @@ Python 3.6
 
 Simply run it as follows:
 ```
-python3 ABComposer.py <stream dir 0> <stream dir 1> <target dir> [--remove_src]
+python3 ABComposer.py <stream dir 0> <stream dir 1> <target dir> [--remove_src] [--overwrite]
 ```
 
 As a default, it copies the sources to the target and keeps the sources. If you want to remove the sources after composing, you can use `--remove_src` option. It moves the sources instead copying and removes remainings.
+
+And if the `<target dir>` already exists, it exits without composing. If you use `--overwrite`, it overwrites the `<target dir>`.
 
 ***
 
